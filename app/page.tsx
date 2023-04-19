@@ -1,124 +1,364 @@
-import Image from 'next/image'
-import { Inter } from 'next/font/google'
+'use client';
+import React, { useState, useMemo } from "react";
+import Container from '@mui/material/Container';
+import Typography from '@mui/material/Typography';
+import Box from '@mui/material/Box';
+import TextField from '@mui/material/TextField';
+import InputAdornment from '@mui/material/InputAdornment';
+import Grid from '@mui/material/Grid';
+import TableBody from '@mui/material/TableBody';
+import TableCell from '@mui/material/TableCell';
+import TableContainer from '@mui/material/TableContainer';
+import TableHead from '@mui/material/TableHead';
+import Table from '@mui/material/Table';
+import TableRow from '@mui/material/TableRow';
+import Paper from '@mui/material/Paper';
+import {
+    Chart as ChartJS,
+    CategoryScale,
+    LinearScale,
+    PointElement,
+    LineElement,
+    Title,
+    Tooltip,
+    Legend,
+    Filler
+} from 'chart.js'
+import { Line } from 'react-chartjs-2'
 
-const inter = Inter({ subsets: ['latin'] })
+ChartJS.register(
+    CategoryScale,
+    LinearScale,
+    PointElement,
+    LineElement,
+    Title,
+    Tooltip,
+    Legend,
+    Filler
+)
+
+
+
+
+
+const defaultRawData = 'POR SU TARJETA TITULAR NIKOLA TESLA FARADAY # 5542 2572 9871 3452\nNov 10 PAYPAL VOLARIS OPM XXXX 6,107.00 1 de 6 1,017.85\nPOR SU TARJETA TITULAR NIKOLA TESLA FARADAY # 5542 2572 9871 3452\nNov 10 PAYPAL VOLARIS OPM XXXX 6,687.00 1 de 6 1,114.50\nPOR SU TARJETA TITULAR NIKOLA TESLA FARADAY # 5542 2572 9871 3452\nNov 19 PAYPAL CYBERPUERTA OPM XXXX 19,138.00 7 de 12 11,163.85\nPOR SU TARJETA TITULAR NIKOLA TESLA FARADAY # 5542 2572 9871 3452\nNov 21 SAMS MERIDA NWM XXXX 12,274.98 13 de 18 8,865.28\nPOR SU TARJETA TITULAR NIKOLA TESLA FARADAY # 5542 2572 9871 3452\nNov 20 AMAZON MX MKTPLACE MSI ANE\n\nXXXX \n\n3,299.00 7 de 12 1,924.40\n\nPOR SU TARJETA TITULAR NIKOLA TESLA FARADAY # 5542 2572 9871 3452\nDic 26 LIVERPOOL MERIDA DLI XXXX  10,890.00 2 de 6 3,630.00\nPOR SU TARJETA TITULAR NIKOLA TESLA FARADAY # 5542 2572 9871 3452\nEne 16 SAMS MERIDA NWM XXXX 3,579.48 9 de 12 2,684.61\nPOR SU TARJETA TITULAR NIKOLA TESLA FARADAY # 5542 2572 9871 3452\nEne 22 CCP MADERO CDMX CAG XXXX 780.00 3 de 6 390.00'
+const defaultTextoToRemove = 'POR SU TARJETA TITULAR NIKOLA TESLA FARADAY # 5542 2572 9871 3452'
+const defaultDineroDisponible = 10000
+const defaultGastosFijos = 2000
+
+type detalleEstadoDeCuentaType = {
+    fecha: string,
+    concepto: string,
+    montoOriginal: string | undefined,
+    costoMensualidad: number,
+    mensualidaesRestantes: string,
+    saldoPendiente: string | undefined,
+    progresoMensualidades: {
+        mesesPendientes: any,
+        totalMeses: any
+    }
+}
+
+type EstadoDeCuentaType = detalleEstadoDeCuentaType[]
+
+const mesesDelAno = [
+    "Enero",
+    "Febrero",
+    "Marzo",
+    "Abril",
+    "Mayo",
+    "Junio",
+    "Julio",
+    "Agosto",
+    "Septiembre",
+    "Octubre",
+    "Noviembre",
+    "Diciembre",
+]
+const fechaActual = new Date()
+const indexMesActual = fechaActual.getMonth()
+
+const getMensualidaesRestantes = (cargo: string) => {
+    let data = cargo.split(' ')
+    let totalMeses = data?.at(-2)
+    let mesesPendientes = data?.at(-4)
+    return {
+        mesesPendientes: mesesPendientes,
+        totalMeses: Number(totalMeses)
+    }
+}
+
+const getMontoOriginal = (cargo: string) => {
+    let data = cargo.split(' ')
+    return data?.at(-5)
+}
+
+const getFecha = (cargo: string) => {
+    let [mes, dia, ..._] = cargo.split(' ')
+    return mes + '' + dia
+}
+
+const getSaldoPendiente = (cargo: string) => {
+    let data = cargo.split(' ')
+    return data?.at(-1)
+}
+
+const toFixed = (number: number, digits = 2) => {
+    return Number(number.toFixed(digits))
+}
+
+const getConcepto = (cargo: string) => {
+    let [_mes, _dia, ...data] = cargo.split(' ')
+    return data.slice(0, -5).join(' ')
+}
+
+const getMesesEndeudado = (estadoDeCuenta: EstadoDeCuentaType) => {
+    let mesesEndeudado = estadoDeCuenta.map(cargo => cargo.progresoMensualidades.mesesPendientes)
+    return Math.max(...mesesEndeudado)
+}
+
+const getMesesPorPagar = (
+    dineroDisponible: number, 
+    gastosFijos: number,
+    mesesEndeudado: number) => {
+        let arrayMeses = []
+        let arrayDineroDisponibleMensual = []
+        for (let index = 0; index < mesesEndeudado; index++) {
+            let indexMes = indexMesActual + index + 1
+            if (indexMes > 11) {
+                arrayMeses.push(mesesDelAno[indexMes - 12])
+            } else {
+                arrayMeses.push(mesesDelAno[indexMes])
+            }
+            arrayDineroDisponibleMensual.push(dineroDisponible - gastosFijos)
+        }
+        return {
+            meses: arrayMeses,
+            dineroDisponibleMensual: arrayDineroDisponibleMensual,
+        }
+}
+
+const getHistorialMesesPorPagar = (
+    estadoDeCuenta: EstadoDeCuentaType,
+    dineroDisponible: number,
+    gastosFijos: number,
+    mesesEndeudado: number) => {
+    let historialDeuda = []
+    let historialDisponible = []
+    for (let index = 0; index < mesesEndeudado; index++) {
+        let pagoMes = estadoDeCuenta.reduce((total, object) => {
+            let mesesPendientes = object.progresoMensualidades.mesesPendientes
+            if (mesesPendientes - index > 0) {
+                return total + object.costoMensualidad;
+            }
+            return total
+        }, 0)
+        historialDeuda.push(pagoMes)
+        historialDisponible.push(dineroDisponible - pagoMes - gastosFijos)
+    }
+    return {
+        pagoMes: historialDeuda,
+        dineroDisponibleMensual: historialDisponible,
+    }
+}
+
+
 
 export default function Home() {
-  return (
-    <main className="flex min-h-screen flex-col items-center justify-between p-24">
-      <div className="z-10 w-full max-w-5xl items-center justify-between font-mono text-sm lg:flex">
-        <p className="fixed left-0 top-0 flex w-full justify-center border-b border-gray-300 bg-gradient-to-b from-zinc-200 pb-6 pt-8 backdrop-blur-2xl dark:border-neutral-800 dark:bg-zinc-800/30 dark:from-inherit lg:static lg:w-auto  lg:rounded-xl lg:border lg:bg-gray-200 lg:p-4 lg:dark:bg-zinc-800/30">
-          Get started by editing&nbsp;
-          <code className="font-mono font-bold">app/page.tsx</code>
-        </p>
-        <div className="fixed bottom-0 left-0 flex h-48 w-full items-end justify-center bg-gradient-to-t from-white via-white dark:from-black dark:via-black lg:static lg:h-auto lg:w-auto lg:bg-none">
-          <a
-            className="pointer-events-none flex place-items-center gap-2 p-8 lg:pointer-events-auto lg:p-0"
-            href="https://vercel.com?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            By{' '}
-            <Image
-              src="/vercel.svg"
-              alt="Vercel Logo"
-              className="dark:invert"
-              width={100}
-              height={24}
-              priority
-            />
-          </a>
-        </div>
-      </div>
 
-      <div className="relative flex place-items-center before:absolute before:h-[300px] before:w-[480px] before:-translate-x-1/2 before:rounded-full before:bg-gradient-radial before:from-white before:to-transparent before:blur-2xl before:content-[''] after:absolute after:-z-20 after:h-[180px] after:w-[240px] after:translate-x-1/3 after:bg-gradient-conic after:from-sky-200 after:via-blue-200 after:blur-2xl after:content-[''] before:dark:bg-gradient-to-br before:dark:from-transparent before:dark:to-blue-700 before:dark:opacity-10 after:dark:from-sky-900 after:dark:via-[#0141ff] after:dark:opacity-40 before:lg:h-[360px]">
-        <Image
-          className="relative dark:drop-shadow-[0_0_0.3rem_#ffffff70] dark:invert"
-          src="/next.svg"
-          alt="Next.js Logo"
-          width={180}
-          height={37}
-          priority
-        />
-      </div>
+    const [textToRemove, setTextoToRemove] = useState(defaultTextoToRemove);
+    const [rawData, setRawData] = useState(defaultRawData);
+    const [dineroDisponible, setDineroDisponible] = useState(defaultDineroDisponible);
+    const [gastosFijos, setGastosFijos] = useState(defaultGastosFijos);
 
-      <div className="mb-32 grid text-center lg:mb-0 lg:grid-cols-4 lg:text-left">
-        <a
-          href="https://beta.nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`${inter.className} mb-3 text-2xl font-semibold`}>
-            Docs{' '}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p
-            className={`${inter.className} m-0 max-w-[30ch] text-sm opacity-50`}
-          >
-            Find in-depth information about Next.js features and API.
-          </p>
-        </a>
+    const onChangeTextoToRemove = (e: React.ChangeEvent<HTMLInputElement>) => {
+        setTextoToRemove(e.target.value);
+    };
+    const onChangeRawData = (e: React.ChangeEvent<HTMLInputElement>) => {
+        setRawData(e.target.value);
+    };
+    const onChangeDineroDisponible = (e: React.ChangeEvent<HTMLInputElement>) => {
+        setDineroDisponible(Number(e.target.value));
+    };
+    const onChangeGastosFijos = (e: React.ChangeEvent<HTMLInputElement>) => {
+        setGastosFijos(Number(e.target.value));
+    };
 
-        <a
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800 hover:dark:bg-opacity-30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`${inter.className} mb-3 text-2xl font-semibold`}>
-            Learn{' '}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p
-            className={`${inter.className} m-0 max-w-[30ch] text-sm opacity-50`}
-          >
-            Learn about Next.js in an interactive course with&nbsp;quizzes!
-          </p>
-        </a>
 
-        <a
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`${inter.className} mb-3 text-2xl font-semibold`}>
-            Templates{' '}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p
-            className={`${inter.className} m-0 max-w-[30ch] text-sm opacity-50`}
-          >
-            Explore the Next.js 13 playground.
-          </p>
-        </a>
 
-        <a
-          href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`${inter.className} mb-3 text-2xl font-semibold`}>
-            Deploy{' '}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p
-            className={`${inter.className} m-0 max-w-[30ch] text-sm opacity-50`}
-          >
-            Instantly deploy your Next.js site to a shareable URL with Vercel.
-          </p>
-        </a>
-      </div>
-    </main>
-  )
+
+
+    const csvToJson = useMemo((): EstadoDeCuentaType => {
+        let items = rawData.split(textToRemove)
+        items = items.filter(n => n)
+        return items.map(cargo => {
+            cargo = cargo.replace('\n', ' ').replace(/\s+/g, ' ').trim()
+            let { mesesPendientes, totalMeses } = getMensualidaesRestantes(cargo)
+            let montoOriginal = getMontoOriginal(cargo)
+            return {
+                fecha: getFecha(cargo),
+                saldoPendiente: getSaldoPendiente(cargo),
+                progresoMensualidades: {
+                    mesesPendientes: mesesPendientes,
+                    totalMeses: totalMeses
+                },
+                costoMensualidad: totalMeses ? toFixed(Number(montoOriginal?.replace(',', '')) / totalMeses) : 0,
+                mensualidaesRestantes: `${mesesPendientes} de ${totalMeses}`,
+                montoOriginal: montoOriginal,
+                concepto: getConcepto(cargo)
+            }
+        })
+    }, [rawData, textToRemove])
+
+
+
+
+
+
+    const barChartData = useMemo(() => {
+        const mesesEndeudado = getMesesEndeudado(csvToJson)
+        const historialMesesPorPagar = getHistorialMesesPorPagar(csvToJson, dineroDisponible, gastosFijos, mesesEndeudado)
+        const mesesPorPagar = getMesesPorPagar(dineroDisponible, gastosFijos, mesesEndeudado)
+        return {
+            labels: mesesPorPagar.meses,
+            datasets: [
+                {
+                    label: 'Pago Mensual',
+                    borderColor: "rgba(255, 20, 0)",
+                    borderWidth: 2,
+                    fill: true,
+                    backgroundColor: (ctx: any) => {
+                        const canvas = ctx.chart.ctx;
+                        const gradient = canvas.createLinearGradient(0, 0, 0, 500);
+                        gradient.addColorStop(0, 'rgba(255,20,0,0)');
+                        gradient.addColorStop(0.25, 'rgba(255,20,0,1)');
+                        gradient.addColorStop(1, 'rgba(255,20,0,0.03)');
+                        return gradient;
+                    },
+                    tension: 0.25,
+                    data: historialMesesPorPagar.pagoMes
+                },
+                {
+                    label: "Dinero Libre",
+                    data: historialMesesPorPagar.dineroDisponibleMensual,
+                    fill: true,
+                    backgroundColor: (ctx: any) => {
+                        const canvas = ctx.chart.ctx;
+                        const gradient = canvas.createLinearGradient(0, 0, 0, 300);
+
+
+                        gradient.addColorStop(0.5, 'rgba(20,255,0,0.3)');
+                        gradient.addColorStop(1, 'rgba(20,255,0,0)');
+                        return gradient;
+                    },
+                    borderColor: "rgba(100, 255, 0, 1)",
+                    borderWidth: 2,
+                },
+                {
+                    label: "Dinero Disponible Mensual",
+                    data: mesesPorPagar.dineroDisponibleMensual,
+                    backgroundColor: "rgba(20, 20, 255, 0.3)",
+                    borderColor: "rgba(0, 20, 255, 1)",
+                    borderWidth: 2,
+                },
+            ],
+        }
+    }, [csvToJson, dineroDisponible, gastosFijos])
+
+
+    return (
+        <Container maxWidth="lg" className="pb-10">
+            <Box
+                sx={{
+                    my: 4,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                }}
+            >
+                <Typography variant="h4" component="h1" gutterBottom>
+                    Grafica Meses sin intereses
+                </Typography>
+
+            </Box>
+            <Grid container spacing={4}>
+                <Grid item xs={4}>
+                    <TextField
+                        label="Ingreso Mensual"
+                        type="number"
+                        variant="standard"
+                        className='w-full'
+                        value={dineroDisponible}
+                        onChange={onChangeDineroDisponible}
+                        InputProps={{
+                            startAdornment: <InputAdornment position="start">$</InputAdornment>,
+                        }} />
+                </Grid>
+                <Grid item xs={4}>
+                    <TextField
+                        label="Gastos Fijos"
+                        type="number"
+                        variant="standard"
+                        className='w-full'
+                        value={gastosFijos}
+                        onChange={onChangeGastosFijos}
+                        InputProps={{
+                            startAdornment: <InputAdornment position="start">$</InputAdornment>,
+                        }} />
+                </Grid>
+                <Grid item xs={12} md={12}>
+                    <TextField
+                        label="Texo a eliminar"
+                        variant="standard"
+                        className='w-full'
+                        value={textToRemove}
+                        onChange={onChangeTextoToRemove} />
+                </Grid>
+                <Grid item xs={12} md={12}>
+                    <TextField
+                        placeholder="MultiLine with rows: 2 and rowsMax: 4"
+                        value={rawData}
+                        onChange={onChangeRawData}
+                        className='w-full'
+                        multiline
+                        rows={10}
+                    />
+                </Grid>
+            </Grid>
+            <TableContainer component={Paper} className='mt-10'>
+                <Table sx={{ minWidth: 650 }} size="small" aria-label="a dense table">
+                    <TableHead>
+                        <TableRow>
+                            <TableCell>Fecha</TableCell>
+                            <TableCell align="right">Concepto</TableCell>
+                            <TableCell align="right">Monto Original</TableCell>
+                            <TableCell align="right">Costo Mensualidad</TableCell>
+                            <TableCell align="right">Mensualidades Restaurantes</TableCell>
+                            <TableCell align="right">Saldo Pendiente</TableCell>
+                        </TableRow>
+                    </TableHead>
+                    <TableBody>
+                        {csvToJson.map((row, key) => (
+                            <TableRow
+                                key={row.concepto + key}
+                                sx={{ '&:last-child td, &:last-child th': { border: 0 } }}
+                            >
+                                <TableCell component="th" scope="row">
+                                    {row.fecha}
+                                </TableCell>
+                                <TableCell align="right">{row.concepto}</TableCell>
+                                <TableCell align="right">{row.montoOriginal}</TableCell>
+                                <TableCell align="right">{row.costoMensualidad}</TableCell>
+                                <TableCell align="right">{row.mensualidaesRestantes}</TableCell>
+                                <TableCell align="right">{row.saldoPendiente}</TableCell>
+                            </TableRow>
+                        ))}
+                    </TableBody>
+                </Table>
+            </TableContainer>
+            <Line width={300} height={100} data={barChartData}
+                chart-id='myCustomId' />
+        </Container>
+    )
 }
