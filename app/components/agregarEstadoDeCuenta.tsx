@@ -18,36 +18,13 @@ import CloseIcon from '@mui/icons-material/Close';
 import Slide from '@mui/material/Slide';
 import { TransitionProps } from '@mui/material/transitions';
 
-type BancosType = {
-    id: number,
-    code: number,
-    regex: RegExp,
-    nombre: string,
-    label: string,
-    lastNumbers?: string
-}
-
-interface ModalProps {
-    isOpen: boolean;
-    onClose: () => void;
-    addEstadoCuentaAcumulado: (newEstadoCuenta: EstadoDeCuentaType) => void;
-}
-
-type DetalleEstadoDeCuentaType = {
-    banco: string | undefined,
-    fecha: string,
-    concepto: string,
-    montoOriginal: string | undefined,
-    costoMensualidad: number,
-    mensualidaesRestantes: string,
-    saldoPendiente: string | undefined,
-    progresoMensualidades: {
-        mesesPendientes: any,
-        totalMeses: any
-    }
-}
-
-type EstadoDeCuentaType = DetalleEstadoDeCuentaType[]
+import {
+	BancosType,
+	ModalProps,
+	EstadoDeCuentaType
+} from "@/src/types"
+import { BanamexLogic } from "@/src/logic/BanamexLogic";
+import AmericanExpressLogic from "@/src/logic/AmericanExpressLogic";
 
 const defaultRawData = 'POR SU TARJETA TITULAR NIKOLA TESLA FARADAY # 5542 2572 9871 3452\nNov 10 PAYPAL VOLARIS OPM XXXX 6,107.00 1 de 6 1,017.85\nPOR SU TARJETA TITULAR NIKOLA TESLA FARADAY # 5542 2572 9871 3452\nNov 10 PAYPAL VOLARIS OPM XXXX 6,687.00 1 de 6 1,114.50\nPOR SU TARJETA TITULAR NIKOLA TESLA FARADAY # 5542 2572 9871 3452\nNov 19 PAYPAL CYBERPUERTA OPM XXXX 19,138.00 7 de 12 11,163.85\nPOR SU TARJETA TITULAR NIKOLA TESLA FARADAY # 5542 2572 9871 3452\nNov 21 SAMS MERIDA NWM XXXX 12,274.98 13 de 18 8,865.28\nPOR SU TARJETA TITULAR NIKOLA TESLA FARADAY # 5542 2572 9871 3452\nNov 20 AMAZON MX MKTPLACE MSI ANE\n\nXXXX \n\n3,299.00 7 de 12 1,924.40\n\nPOR SU TARJETA TITULAR NIKOLA TESLA FARADAY # 5542 2572 9871 3452\nDic 26 LIVERPOOL MERIDA DLI XXXX  10,890.00 2 de 6 3,630.00\nPOR SU TARJETA TITULAR NIKOLA TESLA FARADAY # 5542 2572 9871 3452\nEne 16 SAMS MERIDA NWM XXXX 3,579.48 9 de 12 2,684.61\nPOR SU TARJETA TITULAR NIKOLA TESLA FARADAY # 5542 2572 9871 3452\nEne 22 CCP MADERO CDMX CAG XXXX 780.00 3 de 6 390.00'
 
@@ -78,40 +55,6 @@ const Transition = React.forwardRef(function Transition(
     return <Slide direction="up" ref={ref} {...props} />;
 });
 
-
-const getMensualidaesRestantes = (cargo: string) => {
-    let data = cargo.split(' ')
-    let totalMeses = data?.at(-2)
-    let mesesPendientes = data?.at(-4)
-    return {
-        mesesPendientes: mesesPendientes,
-        totalMeses: Number(totalMeses)
-    }
-}
-
-const getMontoOriginal = (cargo: string) => {
-    let data = cargo.split(' ')
-    return data?.at(-5)
-}
-
-const getFecha = (cargo: string) => {
-    let [mes, dia, ..._] = cargo.split(' ')
-    return mes + '' + dia
-}
-
-const getSaldoPendiente = (cargo: string) => {
-    let data = cargo.split(' ')
-    return data?.at(-1)
-}
-
-const toFixed = (number: number, digits = 2) => {
-    return Number(number.toFixed(digits))
-}
-
-const getConcepto = (cargo: string) => {
-    let [_mes, _dia, ...data] = cargo.split(' ')
-    return data.slice(0, -5).join(' ')
-}
 
 const bancoDetectado = (rawEstadoCuenta: string): BancosType | undefined => {
     let matchBancPattern;
@@ -147,111 +90,6 @@ const bancoDetectado = (rawEstadoCuenta: string): BancosType | undefined => {
     }
 }
 
-const getLabel = (rawEstadoCuenta: string, banco: BancosType) => {
-    const label = banco.label.replace('\n', '')
-    return rawEstadoCuenta.match(label) ? '' : label
-}
-
-const addLabel = (newRawData: string, rawEstadoCuenta: string, banco: BancosType) => {
-    const label = getLabel(rawEstadoCuenta, banco)
-    if (label) {
-        newRawData = label.concat('\n' + newRawData)
-        newRawData += label
-    }
-    return newRawData
-}
-
-const procesaBanamex = (rawEstadoCuenta: string, banco: BancosType) => {
-    let newRawData = ''
-    let cargos: string[] = []
-    const match = rawEstadoCuenta.match(banco.regex)
-    if (match) {
-        const textToRemove = match ? match[1] : '';
-        cargos = rawEstadoCuenta.split(textToRemove ?? '')
-    } else {
-        const label = banco.label.replace('\n', '')
-        rawEstadoCuenta = rawEstadoCuenta.replaceAll(label, '')
-        cargos = rawEstadoCuenta.split('\n')
-    }
-    cargos = cargos.filter(n => n)
-    const estadoCuenta = cargos.map(cargo => {
-        cargo = cargo.replace('\n', ' ').replace(/\s+/g, ' ').trim()
-        let { mesesPendientes, totalMeses } = getMensualidaesRestantes(cargo)
-        let montoOriginal = getMontoOriginal(cargo)
-        newRawData += `${cargo}\n`
-        return {
-            banco: banco.nombre,
-            fecha: getFecha(cargo),
-            saldoPendiente: getSaldoPendiente(cargo),
-            progresoMensualidades: {
-                mesesPendientes: mesesPendientes,
-                totalMeses: totalMeses
-            },
-            costoMensualidad: totalMeses ? toFixed(Number(montoOriginal?.replace(',', '')) / totalMeses) : 0,
-            mensualidaesRestantes: `${mesesPendientes} de ${totalMeses}`,
-            montoOriginal: montoOriginal,
-            concepto: getConcepto(cargo)
-        }
-    })
-    newRawData = addLabel(newRawData, rawEstadoCuenta, banco)
-    return { estadoCuenta, newRawData }
-}
-
-const procesaAMEX = (rawEstadoCuenta: string, banco: BancosType) => {
-    let newRawData = ''
-    let cargos: string[] = []
-    const match = rawEstadoCuenta.match(banco.regex)
-    if (match) {
-        rawEstadoCuenta = rawEstadoCuenta.replaceAll(banco.regex, '')
-        rawEstadoCuenta = rawEstadoCuenta.replaceAll('Mensualidad=(Pago a capital + Interés + IVA)\n', ' ');
-        rawEstadoCuenta = rawEstadoCuenta.replaceAll('\n \n', ' ');
-    }else{
-        const label = banco.label.replace('\n', '')
-        rawEstadoCuenta = rawEstadoCuenta.replaceAll(label, '')
-    }
-    cargos = rawEstadoCuenta.split('\n')
-    cargos = cargos.filter(n => n)
-    console.log(cargos)
-
-    let estadoCuenta: EstadoDeCuentaType = cargos.map((cargo): DetalleEstadoDeCuentaType =>{
-       
-        	var fechaMatch = cargo.match(/\d{1,2} de [A-Za-z]+/g) ?? []
-			var fecha: string = fechaMatch[0] ?? ''
-			var lastIndexConcepto = cargo.search(/\d{1,2} de [A-Za-z]+/g);
-			var concepto = cargo.slice(0, lastIndexConcepto)
-			cargo = cargo.replace(fecha,'')
-			cargo = cargo.replace(concepto,'')
-			var [textoMensualidades, progreso, totalMeses] = cargo.match(/(\d+) de (\d+)/) ?? [];
-			console.log(textoMensualidades)
-			console.log(progreso)
-			console.log(totalMeses)
-			cargo = cargo.replace(textoMensualidades+' ','')
-			const mesesPendientes = Number(totalMeses) - Number(progreso);
-
-			const saldoInfo = cargo.trim().split(' ')
-			var montoOriginal = saldoInfo[0].replace(',','')
-			var saldoPendiente = saldoInfo[2].replace(',','')
-			var costoMensualidad = Number(saldoInfo[3].replace(',',''))
-        return {
-            banco: banco.nombre,
-            fecha,
-            saldoPendiente,
-            progresoMensualidades: {
-                mesesPendientes: mesesPendientes,
-                totalMeses: totalMeses
-            },
-            costoMensualidad,
-            mensualidaesRestantes: `${mesesPendientes} de ${totalMeses}`,
-            montoOriginal,
-            concepto
-        }
-       
-    })
-    estadoCuenta = estadoCuenta.filter(c=> c!=undefined)
-    newRawData = addLabel(rawEstadoCuenta, rawEstadoCuenta, banco)
-    return { estadoCuenta, newRawData }
-
-}
 const procesarEstadoDeCuenta = (rawEstadoCuenta: string, banco: BancosType | undefined) => {
     const testBanco = bancoDetectado(rawEstadoCuenta);
     banco = banco ?? testBanco
@@ -264,10 +102,12 @@ const procesarEstadoDeCuenta = (rawEstadoCuenta: string, banco: BancosType | und
 
     switch (banco?.id) {
         case 1:
-            ({ estadoCuenta, newRawData } = procesaBanamex(rawEstadoCuenta, banco));
+			const banamex = new BanamexLogic(rawEstadoCuenta, banco);
+            ({ estadoCuenta, newRawData } = banamex.procesaEstadoDeCuenta())
             break;
         case 2:
-            ({ estadoCuenta, newRawData } = procesaAMEX(rawEstadoCuenta, banco));
+			const amex = new AmericanExpressLogic(rawEstadoCuenta, banco);
+            ({ estadoCuenta, newRawData } = amex.procesaEstadoDeCuenta())
             break;
         default:
             break;
