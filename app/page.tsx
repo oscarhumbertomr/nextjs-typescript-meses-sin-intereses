@@ -3,6 +3,7 @@ import React, { useState, useMemo } from "react";
 import Container from '@mui/material/Container';
 import Typography from '@mui/material/Typography';
 import Box from '@mui/material/Box';
+import Button from '@mui/material/Button';
 import TextField from '@mui/material/TextField';
 import InputAdornment from '@mui/material/InputAdornment';
 import Grid from '@mui/material/Grid';
@@ -13,6 +14,7 @@ import TableHead from '@mui/material/TableHead';
 import Table from '@mui/material/Table';
 import TableRow from '@mui/material/TableRow';
 import Paper from '@mui/material/Paper';
+import AgregarEstadoDeCuenta from "./components/agregarEstadoDeCuenta";
 import {
     Chart as ChartJS,
     CategoryScale,
@@ -37,30 +39,9 @@ ChartJS.register(
     Filler
 )
 
-
-
-
-
-const defaultRawData = 'POR SU TARJETA TITULAR NIKOLA TESLA FARADAY # 5542 2572 9871 3452\nNov 10 PAYPAL VOLARIS OPM XXXX 6,107.00 1 de 6 1,017.85\nPOR SU TARJETA TITULAR NIKOLA TESLA FARADAY # 5542 2572 9871 3452\nNov 10 PAYPAL VOLARIS OPM XXXX 6,687.00 1 de 6 1,114.50\nPOR SU TARJETA TITULAR NIKOLA TESLA FARADAY # 5542 2572 9871 3452\nNov 19 PAYPAL CYBERPUERTA OPM XXXX 19,138.00 7 de 12 11,163.85\nPOR SU TARJETA TITULAR NIKOLA TESLA FARADAY # 5542 2572 9871 3452\nNov 21 SAMS MERIDA NWM XXXX 12,274.98 13 de 18 8,865.28\nPOR SU TARJETA TITULAR NIKOLA TESLA FARADAY # 5542 2572 9871 3452\nNov 20 AMAZON MX MKTPLACE MSI ANE\n\nXXXX \n\n3,299.00 7 de 12 1,924.40\n\nPOR SU TARJETA TITULAR NIKOLA TESLA FARADAY # 5542 2572 9871 3452\nDic 26 LIVERPOOL MERIDA DLI XXXX  10,890.00 2 de 6 3,630.00\nPOR SU TARJETA TITULAR NIKOLA TESLA FARADAY # 5542 2572 9871 3452\nEne 16 SAMS MERIDA NWM XXXX 3,579.48 9 de 12 2,684.61\nPOR SU TARJETA TITULAR NIKOLA TESLA FARADAY # 5542 2572 9871 3452\nEne 22 CCP MADERO CDMX CAG XXXX 780.00 3 de 6 390.00'
-const defaultTextoToRemove = 'POR SU TARJETA TITULAR NIKOLA TESLA FARADAY # 5542 2572 9871 3452'
 const defaultDineroDisponible = 10000
 const defaultGastosFijos = 2000
-
-type detalleEstadoDeCuentaType = {
-    fecha: string,
-    concepto: string,
-    montoOriginal: string | undefined,
-    costoMensualidad: number,
-    mensualidaesRestantes: string,
-    saldoPendiente: string | undefined,
-    progresoMensualidades: {
-        mesesPendientes: any,
-        totalMeses: any
-    }
-}
-
-type EstadoDeCuentaType = detalleEstadoDeCuentaType[]
-
+const defaultMesesFondoDeAhorros = 6
 const mesesDelAno = [
     "Enero",
     "Febrero",
@@ -78,39 +59,21 @@ const mesesDelAno = [
 const fechaActual = new Date()
 const indexMesActual = fechaActual.getMonth()
 
-const getMensualidaesRestantes = (cargo: string) => {
-    let data = cargo.split(' ')
-    let totalMeses = data?.at(-2)
-    let mesesPendientes = data?.at(-4)
-    return {
-        mesesPendientes: mesesPendientes,
-        totalMeses: Number(totalMeses)
+type detalleEstadoDeCuentaType = {
+    banco: string | undefined,
+    fecha: string,
+    concepto: string,
+    montoOriginal: string | undefined,
+    costoMensualidad: number,
+    mensualidaesRestantes: string,
+    saldoPendiente: string | undefined,
+    progresoMensualidades: {
+        mesesPendientes: any,
+        totalMeses: any
     }
 }
 
-const getMontoOriginal = (cargo: string) => {
-    let data = cargo.split(' ')
-    return data?.at(-5)
-}
-
-const getFecha = (cargo: string) => {
-    let [mes, dia, ..._] = cargo.split(' ')
-    return mes + '' + dia
-}
-
-const getSaldoPendiente = (cargo: string) => {
-    let data = cargo.split(' ')
-    return data?.at(-1)
-}
-
-const toFixed = (number: number, digits = 2) => {
-    return Number(number.toFixed(digits))
-}
-
-const getConcepto = (cargo: string) => {
-    let [_mes, _dia, ...data] = cargo.split(' ')
-    return data.slice(0, -5).join(' ')
-}
+type EstadoDeCuentaType = detalleEstadoDeCuentaType[]
 
 const getMesesEndeudado = (estadoDeCuenta: EstadoDeCuentaType) => {
     let mesesEndeudado = estadoDeCuenta.map(cargo => cargo.progresoMensualidades.mesesPendientes)
@@ -118,24 +81,24 @@ const getMesesEndeudado = (estadoDeCuenta: EstadoDeCuentaType) => {
 }
 
 const getMesesPorPagar = (
-    dineroDisponible: number, 
+    dineroDisponible: number,
     gastosFijos: number,
     mesesEndeudado: number) => {
-        let arrayMeses = []
-        let arrayDineroDisponibleMensual = []
-        for (let index = 0; index < mesesEndeudado; index++) {
-            let indexMes = indexMesActual + index + 1
-            if (indexMes > 11) {
-                arrayMeses.push(mesesDelAno[indexMes - 12])
-            } else {
-                arrayMeses.push(mesesDelAno[indexMes])
-            }
-            arrayDineroDisponibleMensual.push(dineroDisponible - gastosFijos)
+    let arrayMeses = []
+    let arrayDineroDisponibleMensual = []
+    for (let index = 0; index < mesesEndeudado; index++) {
+        let indexMes = indexMesActual + index + 1
+        if (indexMes > 11) {
+            arrayMeses.push(mesesDelAno[indexMes - 12])
+        } else {
+            arrayMeses.push(mesesDelAno[indexMes])
         }
-        return {
-            meses: arrayMeses,
-            dineroDisponibleMensual: arrayDineroDisponibleMensual,
-        }
+        arrayDineroDisponibleMensual.push(dineroDisponible - gastosFijos)
+    }
+    return {
+        meses: arrayMeses,
+        dineroDisponibleMensual: arrayDineroDisponibleMensual,
+    }
 }
 
 const getHistorialMesesPorPagar = (
@@ -162,21 +125,28 @@ const getHistorialMesesPorPagar = (
     }
 }
 
-
-
 export default function Home() {
-
-    const [textToRemove, setTextoToRemove] = useState(defaultTextoToRemove);
-    const [rawData, setRawData] = useState(defaultRawData);
     const [dineroDisponible, setDineroDisponible] = useState(defaultDineroDisponible);
     const [gastosFijos, setGastosFijos] = useState(defaultGastosFijos);
+    const [mesesFondoDeAhorros, setMesesFondoDeAhorros] = useState(defaultMesesFondoDeAhorros);
+    const [open, setOpen] = React.useState(false);
+    const [estadoCuentaAcumulado, setEstadoCuentaAcumulado] = useState<EstadoDeCuentaType>([])
 
-    const onChangeTextoToRemove = (e: React.ChangeEvent<HTMLInputElement>) => {
-        setTextoToRemove(e.target.value);
+    const handleClickOpen = () => {
+        setOpen(true);
     };
-    const onChangeRawData = (e: React.ChangeEvent<HTMLInputElement>) => {
-        setRawData(e.target.value);
+
+    const handleClose = () => {
+        setOpen(false);
     };
+
+    const handleBorrarTodo = () => {
+        setEstadoCuentaAcumulado([])
+    }
+
+    const addEstadoCuentaAcumulado = (newEstadoCuenta: EstadoDeCuentaType)=>{
+        setEstadoCuentaAcumulado([...estadoCuentaAcumulado, ...newEstadoCuenta])
+    }
     const onChangeDineroDisponible = (e: React.ChangeEvent<HTMLInputElement>) => {
         setDineroDisponible(Number(e.target.value));
     };
@@ -184,40 +154,29 @@ export default function Home() {
         setGastosFijos(Number(e.target.value));
     };
 
+    const toFixed = (number: number, digits = 2) => {
+        return Number(number.toFixed(digits))
+    }
 
+    const fondoDeAhorroSujerido = useMemo(() => {
+        const mesesEndeudado = getMesesEndeudado(estadoCuentaAcumulado)
+        const historialMesesPorPagar = getHistorialMesesPorPagar(estadoCuentaAcumulado, dineroDisponible, gastosFijos, mesesEndeudado)
+        const arrayFondoDeAhorro = historialMesesPorPagar.pagoMes.slice(0, mesesFondoDeAhorros)
+        const fondoDeAhorro = arrayFondoDeAhorro.reduce((accumulator, currentValue) => {
+            return accumulator + currentValue
+        }, 0);
+        return fondoDeAhorro
+    }, [estadoCuentaAcumulado, dineroDisponible, gastosFijos, mesesFondoDeAhorros])
 
+    const porcentajeDeudaFondoDeAhorros = useMemo(()=>{
+        return fondoDeAhorroSujerido * 100 / (mesesFondoDeAhorros * dineroDisponible) 
 
-
-    const csvToJson = useMemo((): EstadoDeCuentaType => {
-        let items = rawData.split(textToRemove)
-        items = items.filter(n => n)
-        return items.map(cargo => {
-            cargo = cargo.replace('\n', ' ').replace(/\s+/g, ' ').trim()
-            let { mesesPendientes, totalMeses } = getMensualidaesRestantes(cargo)
-            let montoOriginal = getMontoOriginal(cargo)
-            return {
-                fecha: getFecha(cargo),
-                saldoPendiente: getSaldoPendiente(cargo),
-                progresoMensualidades: {
-                    mesesPendientes: mesesPendientes,
-                    totalMeses: totalMeses
-                },
-                costoMensualidad: totalMeses ? toFixed(Number(montoOriginal?.replace(',', '')) / totalMeses) : 0,
-                mensualidaesRestantes: `${mesesPendientes} de ${totalMeses}`,
-                montoOriginal: montoOriginal,
-                concepto: getConcepto(cargo)
-            }
-        })
-    }, [rawData, textToRemove])
-
-
-
-
+    }, [fondoDeAhorroSujerido, dineroDisponible, mesesFondoDeAhorros])
 
 
     const barChartData = useMemo(() => {
-        const mesesEndeudado = getMesesEndeudado(csvToJson)
-        const historialMesesPorPagar = getHistorialMesesPorPagar(csvToJson, dineroDisponible, gastosFijos, mesesEndeudado)
+        const mesesEndeudado = getMesesEndeudado(estadoCuentaAcumulado)
+        const historialMesesPorPagar = getHistorialMesesPorPagar(estadoCuentaAcumulado, dineroDisponible, gastosFijos, mesesEndeudado)
         const mesesPorPagar = getMesesPorPagar(dineroDisponible, gastosFijos, mesesEndeudado)
         return {
             labels: mesesPorPagar.meses,
@@ -263,7 +222,7 @@ export default function Home() {
                 },
             ],
         }
-    }, [csvToJson, dineroDisponible, gastosFijos])
+    }, [estadoCuentaAcumulado, dineroDisponible, gastosFijos])
 
 
     return (
@@ -307,58 +266,67 @@ export default function Home() {
                             startAdornment: <InputAdornment position="start">$</InputAdornment>,
                         }} />
                 </Grid>
-                <Grid item xs={12} md={12}>
-                    <TextField
-                        label="Texo a eliminar"
-                        variant="standard"
-                        className='w-full'
-                        value={textToRemove}
-                        onChange={onChangeTextoToRemove} />
+                <Grid item xs={4}>
+                    <Button variant="outlined" onClick={handleClickOpen}>Agregr Estado de Cuenta</Button>
                 </Grid>
-                <Grid item xs={12} md={12}>
-                    <TextField
-                        placeholder="MultiLine with rows: 2 and rowsMax: 4"
-                        value={rawData}
-                        onChange={onChangeRawData}
-                        className='w-full'
-                        multiline
-                        rows={10}
-                    />
+                {estadoCuentaAcumulado.length > 0 && <><Grid item xs={4}>
+                    <Button variant="outlined" onClick={handleBorrarTodo}>Borrar todo</Button>
+                </Grid><Grid item xs={12}>
+                        <TableContainer component={Paper} className='mt-11'>
+                            <Table sx={{ minWidth: 649 }} size="small" aria-label="a dense table">
+                                <TableHead>
+                                    <TableRow>
+                                        <TableCell>Banco</TableCell>
+                                        <TableCell>Fecha</TableCell>
+                                        <TableCell align="right">Concepto</TableCell>
+                                        <TableCell align="right">Monto Original</TableCell>
+                                        <TableCell align="right">Costo Mensualidad</TableCell>
+                                        <TableCell align="right">Mensualidades Restaurantes</TableCell>
+                                        <TableCell align="right">Saldo Pendiente</TableCell>
+                                    </TableRow>
+                                </TableHead>
+                                <TableBody>
+                                    {estadoCuentaAcumulado.map((row, key) => (
+                                        <TableRow
+                                            key={row.concepto + key}
+                                            sx={{ '&:last-child td, &:last-child th': { border: -1 } }}
+                                        >
+                                            <TableCell component="th" scope="row">
+                                                {row.banco}
+                                            </TableCell>
+                                            <TableCell component="th" scope="row">
+                                                {row.fecha}
+                                            </TableCell>
+                                            <TableCell align="right">{row.concepto}</TableCell>
+                                            <TableCell align="right">{row.montoOriginal}</TableCell>
+                                            <TableCell align="right">{row.costoMensualidad}</TableCell>
+                                            <TableCell align="right">{row.mensualidaesRestantes}</TableCell>
+                                            <TableCell align="right">{row.saldoPendiente}</TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </TableContainer>
+                    </Grid><Grid xs={12}>
+                        Usted debe de contar con un fondo de ahorro de {fondoDeAhorroSujerido + (gastosFijos * mesesFondoDeAhorros)} para
+                        los siguientes {mesesFondoDeAhorros} meses, lo que equivale a {mesesFondoDeAhorros} meses
+                        de los gastos de los proximos {mesesFondoDeAhorros} meses de MSI ({fondoDeAhorroSujerido}) mas {mesesFondoDeAhorros} meses de gastos fijos ({gastosFijos * mesesFondoDeAhorros}),
+                        lo que representa el { toFixed(porcentajeDeudaFondoDeAhorros) } % de tu dinero disponible en los siguientes {mesesFondoDeAhorros} meses de dinero disponible
+                    </Grid><Grid xs={12}>
+                        <Line width={301} height={100} data={barChartData}
+                            chart-id='myCustomId' />
+                    </Grid></>}
+                <Grid xs={13}>
+                    - Importar Gastos Fijos CSV<br />
+                    - Deuda Total<br />
+                    - refactor
+                    - seleccionar meses fondo de ahorro
+                    - exportar PDF
+                    - exportar e importar json
+                    - mostrar una tabla con las deudas de los proximos 6 meses
                 </Grid>
             </Grid>
-            <TableContainer component={Paper} className='mt-10'>
-                <Table sx={{ minWidth: 650 }} size="small" aria-label="a dense table">
-                    <TableHead>
-                        <TableRow>
-                            <TableCell>Fecha</TableCell>
-                            <TableCell align="right">Concepto</TableCell>
-                            <TableCell align="right">Monto Original</TableCell>
-                            <TableCell align="right">Costo Mensualidad</TableCell>
-                            <TableCell align="right">Mensualidades Restaurantes</TableCell>
-                            <TableCell align="right">Saldo Pendiente</TableCell>
-                        </TableRow>
-                    </TableHead>
-                    <TableBody>
-                        {csvToJson.map((row, key) => (
-                            <TableRow
-                                key={row.concepto + key}
-                                sx={{ '&:last-child td, &:last-child th': { border: 0 } }}
-                            >
-                                <TableCell component="th" scope="row">
-                                    {row.fecha}
-                                </TableCell>
-                                <TableCell align="right">{row.concepto}</TableCell>
-                                <TableCell align="right">{row.montoOriginal}</TableCell>
-                                <TableCell align="right">{row.costoMensualidad}</TableCell>
-                                <TableCell align="right">{row.mensualidaesRestantes}</TableCell>
-                                <TableCell align="right">{row.saldoPendiente}</TableCell>
-                            </TableRow>
-                        ))}
-                    </TableBody>
-                </Table>
-            </TableContainer>
-            <Line width={300} height={100} data={barChartData}
-                chart-id='myCustomId' />
+            { open && <AgregarEstadoDeCuenta isOpen={open} onClose={handleClose} addEstadoCuentaAcumulado={addEstadoCuentaAcumulado} /> }
         </Container>
     )
 }
