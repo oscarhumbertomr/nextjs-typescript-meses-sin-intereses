@@ -214,24 +214,24 @@ const procesaAMEX = (rawEstadoCuenta: string, banco: BancosType) => {
     console.log(cargos)
 
     let estadoCuenta: EstadoDeCuentaType = cargos.map((cargo): DetalleEstadoDeCuentaType =>{
-        try {
-         var fechaMatch = cargo.match(/\d{1,2} de [A-Za-z]+/g) ?? []
-        var fecha: string = fechaMatch[0] ?? ''
-        var lastIndexConcepto = cargo.search(/\d{1,2} de [A-Za-z]+/g);
-        var concepto = cargo.slice(0, lastIndexConcepto)
-        cargo = cargo.replace(fecha,'')
-        cargo = cargo.replace(concepto,'')
-        var [textoMensualidades, progreso, totalMeses] = cargo.match(/(\d+) de (\d+)/) ?? [];
-        console.log(textoMensualidades)
-        console.log(progreso)
-        console.log(totalMeses)
-        cargo = cargo.replace(textoMensualidades+' ','')
-        const mesesPendientes = Number(totalMeses) - Number(progreso);
+       
+        	var fechaMatch = cargo.match(/\d{1,2} de [A-Za-z]+/g) ?? []
+			var fecha: string = fechaMatch[0] ?? ''
+			var lastIndexConcepto = cargo.search(/\d{1,2} de [A-Za-z]+/g);
+			var concepto = cargo.slice(0, lastIndexConcepto)
+			cargo = cargo.replace(fecha,'')
+			cargo = cargo.replace(concepto,'')
+			var [textoMensualidades, progreso, totalMeses] = cargo.match(/(\d+) de (\d+)/) ?? [];
+			console.log(textoMensualidades)
+			console.log(progreso)
+			console.log(totalMeses)
+			cargo = cargo.replace(textoMensualidades+' ','')
+			const mesesPendientes = Number(totalMeses) - Number(progreso);
 
-        const saldoInfo = cargo.trim().split(' ')
-        var montoOriginal = saldoInfo[0].replace(',','')
-        var saldoPendiente = saldoInfo[2].replace(',','')
-        var costoMensualidad = Number(saldoInfo[3].replace(',',''))
+			const saldoInfo = cargo.trim().split(' ')
+			var montoOriginal = saldoInfo[0].replace(',','')
+			var saldoPendiente = saldoInfo[2].replace(',','')
+			var costoMensualidad = Number(saldoInfo[3].replace(',',''))
         return {
             banco: banco.nombre,
             fecha,
@@ -244,9 +244,6 @@ const procesaAMEX = (rawEstadoCuenta: string, banco: BancosType) => {
             mensualidaesRestantes: `${mesesPendientes} de ${totalMeses}`,
             montoOriginal,
             concepto
-        }
-        } catch (error) {
-            console.error(error)
         }
        
     })
