@@ -13,8 +13,8 @@ import {
 
 export class BanamexLogic implements BancoFactory {
 
-	infoBanco: BancosType;
-	rawEstadoDeCuenta: string;
+	private infoBanco: BancosType;
+	private rawEstadoDeCuenta: string;
 
 	constructor(estadoDeCuenta: string, infoBanco: BancosType) {
 		this.infoBanco = infoBanco;

@@ -34,7 +34,7 @@ export default class AmericanExpressLogic implements BancoFactory {
 		cargos = cargos.filter(n => n)
 		console.log(cargos)
 
-		let estadoCuenta: EstadoDeCuentaType = cargos.map((cargo): DetalleEstadoDeCuentaType => {
+		let estadoCuenta: EstadoDeCuentaType = cargos.map((cargo): DetalleEstadoDeCuentaType | null => {
 
 			var fechaMatch = cargo.match(/\d{1,2} de [A-Za-z]+/g) ?? []
 			var fecha: string = fechaMatch[0] ?? ''
@@ -50,6 +50,9 @@ export default class AmericanExpressLogic implements BancoFactory {
 			const mesesPendientes = Number(totalMeses) - Number(progreso);
 
 			const saldoInfo = cargo.trim().split(' ')
+			if(cargo.length<3) {
+				return null
+			}
 			var montoOriginal = saldoInfo[0].replace(',', '')
 			var saldoPendiente = saldoInfo[2].replace(',', '')
 			var costoMensualidad = Number(saldoInfo[3].replace(',', ''))
@@ -67,10 +70,9 @@ export default class AmericanExpressLogic implements BancoFactory {
 				concepto
 			}
 
-		})
-		estadoCuenta = estadoCuenta.filter(c => c != undefined)
+		}).flatMap( f => f ? [f] : []);
 		newRawData = addLabel(this.rawEstadoDeCuenta, this.rawEstadoDeCuenta, this.infoBanco)
-		return { estadoCuenta, newRawData }
+		return { estadoCuenta , newRawData }
 	}
 
 
