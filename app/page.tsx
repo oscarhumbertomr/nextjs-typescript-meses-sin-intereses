@@ -14,7 +14,6 @@ import TableHead from '@mui/material/TableHead';
 import Table from '@mui/material/Table';
 import TableRow from '@mui/material/TableRow';
 import Paper from '@mui/material/Paper';
-import AgregarEstadoDeCuenta from "./components/agregarEstadoDeCuenta";
 import {
 	Chart as ChartJS,
 	CategoryScale,
@@ -27,6 +26,7 @@ import {
 	Filler
 } from 'chart.js'
 import { Line } from 'react-chartjs-2'
+import AgregarEstadoDeCuenta from "./components/agregarEstadoDeCuenta";
 import { toFixed } from "@/src/logic/utils";
 import {
 	defaultDineroDisponible,

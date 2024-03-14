@@ -10,7 +10,6 @@ import {
 } from "./utils";
 
 
-
 export class BanamexLogic implements BancoFactory {
 
 	private infoBanco: BancosType;
