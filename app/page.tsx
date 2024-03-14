@@ -27,6 +27,14 @@ import {
     Filler
 } from 'chart.js'
 import { Line } from 'react-chartjs-2'
+import { toFixed } from "@/src/logic/utils";
+import { 
+	defaultDineroDisponible,
+	defaultGastosFijos,
+	defaultMesesFondoDeAhorros,
+	mesesDelAno
+} from "@/src/constants";
+import { EstadoDeCuentaType } from "@/src/types";
 
 ChartJS.register(
     CategoryScale,
@@ -39,41 +47,8 @@ ChartJS.register(
     Filler
 )
 
-const defaultDineroDisponible = 10000
-const defaultGastosFijos = 2000
-const defaultMesesFondoDeAhorros = 6
-const mesesDelAno = [
-    "Enero",
-    "Febrero",
-    "Marzo",
-    "Abril",
-    "Mayo",
-    "Junio",
-    "Julio",
-    "Agosto",
-    "Septiembre",
-    "Octubre",
-    "Noviembre",
-    "Diciembre",
-]
 const fechaActual = new Date()
 const indexMesActual = fechaActual.getMonth()
-
-type detalleEstadoDeCuentaType = {
-    banco: string | undefined,
-    fecha: string,
-    concepto: string,
-    montoOriginal: string | undefined,
-    costoMensualidad: number,
-    mensualidaesRestantes: string,
-    saldoPendiente: string | undefined,
-    progresoMensualidades: {
-        mesesPendientes: any,
-        totalMeses: any
-    }
-}
-
-type EstadoDeCuentaType = detalleEstadoDeCuentaType[]
 
 const getMesesEndeudado = (estadoDeCuenta: EstadoDeCuentaType) => {
     let mesesEndeudado = estadoDeCuenta.map(cargo => cargo.progresoMensualidades.mesesPendientes)
@@ -153,10 +128,6 @@ export default function Home() {
     const onChangeGastosFijos = (e: React.ChangeEvent<HTMLInputElement>) => {
         setGastosFijos(Number(e.target.value));
     };
-
-    const toFixed = (number: number, digits = 2) => {
-        return Number(number.toFixed(digits))
-    }
 
     const fondoDeAhorroSujerido = useMemo(() => {
         const mesesEndeudado = getMesesEndeudado(estadoCuentaAcumulado)
