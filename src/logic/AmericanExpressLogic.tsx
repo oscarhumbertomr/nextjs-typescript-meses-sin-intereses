@@ -50,7 +50,7 @@ export default class AmericanExpressLogic implements BancoFactory {
 			const mesesPendientes = Number(totalMeses) - Number(progreso);
 
 			const saldoInfo = cargo.trim().split(' ')
-			if(cargo.length<3) {
+			if (cargo.length < 3) {
 				return null
 			}
 			var montoOriginal = saldoInfo[0].replace(',', '')
@@ -70,9 +70,9 @@ export default class AmericanExpressLogic implements BancoFactory {
 				concepto
 			}
 
-		}).flatMap( f => f ? [f] : []);
+		}).flatMap(f => f ? [f] : []);
 		newRawData = addLabel(this.rawEstadoDeCuenta, this.rawEstadoDeCuenta, this.infoBanco)
-		return { estadoCuenta , newRawData }
+		return { estadoCuenta, newRawData }
 	}
 
 

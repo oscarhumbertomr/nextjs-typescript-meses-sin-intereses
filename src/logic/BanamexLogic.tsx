@@ -1,11 +1,11 @@
 import { BancoFactory, BancosType } from "../types";
 import {
 	addLabel,
-	getConcepto, 
-	getFecha, 
-	getMensualidaesRestantes, 
-	getMontoOriginal, 
-	getSaldoPendiente, 
+	getConcepto,
+	getFecha,
+	getMensualidaesRestantes,
+	getMontoOriginal,
+	getSaldoPendiente,
 	toFixed
 } from "./utils";
 
